@@ -72,13 +72,21 @@ module Globalize
         after_update :save_translations!
 
         if options[:versioning]
-          if options[:versioning].is_a?(Hash)
-            translation_class.versioned options[:versioning]
-          else
+          versioning_with_paper_trail = Proc.new do |options|
             ::ActiveRecord::Base.extend(Globalize::Versioning::PaperTrail)
 
-            translation_class.has_paper_trail
+            translation_class.has_paper_trail options
             delegate :version, :versions, :to => :translation
+          end
+
+          if options[:versioning].is_a?(Hash)
+            if options[:versioning].has_key? :paper_trail
+              versioning_with_paper_trail.call(options[:versioning][:paper_trail])
+            else
+              translation_class.versioned options[:versioning].has_key?(:vestal_versions) ? options[:versioning][:vestal_versions] : options[:versioning]
+            end
+          else
+            versioning_with_paper_trail.call(nil)
           end
         end
 
